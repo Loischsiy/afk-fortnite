@@ -37,6 +37,8 @@ func mainMenu() {
 	fmt.Println("Choose which AFK mode you want to use:")
 	fmt.Println("[1] - AFK #1: AFK mode for LEGO")
 	fmt.Println("[2] - AFK #2: AFK mode for AFK maps")
+	fmt.Println("[3] - AFK #3: AFK mode for Circle runing")
+	fmt.Println("[4] - AFK #4: S-Press + Shift")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -69,6 +71,30 @@ func mainMenu() {
 		go func() {
 			defer wg.Done()
 			codeOption2(ctx)
+		}()
+		wg.Wait()
+		cancel()
+	case 3:
+		ctx, cancel := context.WithCancel(context.Background())
+		// Start key listener in a separate goroutine
+		go keyListener(cancel)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codeOption3(ctx)
+		}()
+		wg.Wait()
+		cancel()
+	case 4:
+		ctx, cancel := context.WithCancel(context.Background())
+		// Start key listener in a separate goroutine
+		go keyListener(cancel)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codeOption4(ctx)
 		}()
 		wg.Wait()
 		cancel()
@@ -114,6 +140,79 @@ func codeOption2(ctx context.Context) {
 					// Continue after 180 seconds
 				}
 			} else {
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
+}
+
+func codeOption3(ctx context.Context) {
+	fmt.Println("AFK mode for Circle activated")
+
+	// Use defer to ensure keys are released when the function exits
+	defer func() {
+		holdKey("shift", false)
+		holdKey("w", false)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if running.Load() {
+				// Press and hold 'shift' and 'w' keys
+				holdKey("shift", true)
+				holdKey("w", true)
+
+				// Rotate mouse for 360 degrees (adjust duration as needed for smooth circle running)
+				moveMouseRightContinuously(7 * time.Second)
+
+				// Release 'shift' and 'w' keys
+				holdKey("shift", false)
+				holdKey("w", false)
+			} else {
+				// Small pause when not running
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
+}
+
+func codeOption4(ctx context.Context) {
+	fmt.Println("AFK mode #4 activated")
+
+	// Use defer to ensure the 's' key is released when the function exits
+	defer func() {
+		holdKey("s", false)
+	}()
+
+	// Create a ticker that fires every 5 seconds
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if running.Load() {
+				// Press and release 'shift' key
+				holdKey("shift", true)
+				time.Sleep(50 * time.Millisecond)
+				holdKey("shift", false)
+			}
+		default:
+			if running.Load() {
+				// Press and hold 's' key for 0.3 seconds
+				holdKey("s", true)
+				time.Sleep(300 * time.Millisecond)
+				// Release 's' key
+				holdKey("s", false)
+				// Sleep for 0.3 seconds before the next cycle
+				time.Sleep(300 * time.Millisecond)
+			} else {
+				// Small pause when not running
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
