@@ -39,6 +39,7 @@ func mainMenu() {
 	fmt.Println("[2] - AFK #2: AFK mode for AFK maps")
 	fmt.Println("[3] - AFK #3: AFK mode for Circle runing")
 	fmt.Println("[4] - AFK #4: S-Press + Shift")
+	fmt.Println("[5] - AFK #5: Hold E")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -95,6 +96,18 @@ func mainMenu() {
 		go func() {
 			defer wg.Done()
 			codeOption4(ctx)
+		}()
+		wg.Wait()
+		cancel()
+	case 5:
+		ctx, cancel := context.WithCancel(context.Background())
+		// Start key listener in a separate goroutine
+		go keyListener(cancel)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codeOption5(ctx)
 		}()
 		wg.Wait()
 		cancel()
@@ -155,23 +168,31 @@ func codeOption3(ctx context.Context) {
 		holdKey("w", false)
 	}()
 
+	// Track the state of shift key
+	shiftPressed := false
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			if running.Load() {
-				// Press and hold 'shift' and 'w' keys
-				holdKey("shift", true)
-				holdKey("w", true)
+				// If shift is not pressed yet, press and hold it along with 'w'
+				if !shiftPressed {
+					holdKey("shift", true)
+					holdKey("w", true)
+					shiftPressed = true
+				}
 
 				// Rotate mouse for 360 degrees (adjust duration as needed for smooth circle running)
 				moveMouseRightContinuously(7 * time.Second)
-
-				// Release 'shift' and 'w' keys
-				holdKey("shift", false)
-				holdKey("w", false)
 			} else {
+				// If shift is pressed and running is false, release the keys
+				if shiftPressed {
+					holdKey("shift", false)
+					holdKey("w", false)
+					shiftPressed = false
+				}
 				// Small pause when not running
 				time.Sleep(100 * time.Millisecond)
 			}
@@ -215,6 +236,34 @@ func codeOption4(ctx context.Context) {
 				// Small pause when not running
 				time.Sleep(100 * time.Millisecond)
 			}
+		}
+	}
+}
+
+func codeOption5(ctx context.Context) {
+	fmt.Println("AFK mode #5 (Hold E) activated")
+
+	// Use defer to ensure the 'e' key is released when the function exits
+	defer func() {
+		holdKey("e", false)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if running.Load() {
+				// Press and hold 'e' key continuously while running
+				holdKey("e", true)
+				// Small pause to prevent overwhelming the CPU
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				// Release 'e' key when not running
+				holdKey("e", false)
+			}
+			// Small pause to prevent overwhelming the CPU
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

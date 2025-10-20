@@ -56,22 +56,16 @@ func holdKey(key string, press bool) {
 // Function to move the mouse continuously to the right edge of the screen for a given duration
 func moveMouseRightContinuously(duration time.Duration) {
 	// Get screen size
-	screenWidth, screenHeight := robotgo.GetScreenSize()
+	screenWidth, _ := robotgo.GetScreenSize()
+
+	// Get current mouse position
+	_, currentY := robotgo.GetMousePos()
 
 	// Calculate the target x coordinate (right edge of the screen)
 	targetX := screenWidth - 1
-	// Calculate the y coordinate (center of the screen vertically)
-	targetY := screenHeight / 2
+	// Keep the same y coordinate as current position
+	targetY := currentY
 
-	// Start time for the movement
-	startTime := time.Now()
-
-	// Continue moving the mouse to the right edge for the specified duration
-	for time.Since(startTime) < duration {
-		// Move the mouse to the right edge of the screen
-		robotgo.Move(targetX, targetY)
-
-		// Sleep for 100 milliseconds to avoid overloading the CPU
-		time.Sleep(100 * time.Millisecond)
-	}
+	// Move the mouse smoothly to the right edge of the screen
+	robotgo.MoveSmooth(targetX, targetY, 10.0, 100.0)
 }
