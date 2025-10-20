@@ -22,8 +22,11 @@
 *.dylib
 *.dll
 
+# Compiled components
+afk*
+
 # Fortran module files
-*.mod
+*.sum
 *.smod
 
 # Compiled Static libraries
