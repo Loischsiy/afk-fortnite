@@ -37,9 +37,10 @@ func mainMenu() {
 	fmt.Println("Choose which AFK mode you want to use:")
 	fmt.Println("[1] - AFK #1: AFK mode for LEGO")
 	fmt.Println("[2] - AFK #2: AFK mode for AFK maps")
-	fmt.Println("[3] - AFK #3: AFK mode for Circle runing")
+	fmt.Println("[3] - AFK #3: AFK mode for Circle runing (testing)")
 	fmt.Println("[4] - AFK #4: S-Press + Shift")
 	fmt.Println("[5] - AFK #5: Hold E")
+	fmt.Println("[6] - AFK #6: AFK maps + Left Mouse Button")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -52,6 +53,9 @@ func mainMenu() {
 
 	switch choice {
 	case 1:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
 		ctx, cancel := context.WithCancel(context.Background())
 		// Start key listener in a separate goroutine
 		go keyListener(cancel)
@@ -64,6 +68,9 @@ func mainMenu() {
 		wg.Wait()
 		cancel()
 	case 2:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
 		ctx, cancel := context.WithCancel(context.Background())
 		// Start key listener in a separate goroutine
 		go keyListener(cancel)
@@ -76,6 +83,9 @@ func mainMenu() {
 		wg.Wait()
 		cancel()
 	case 3:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
 		ctx, cancel := context.WithCancel(context.Background())
 		// Start key listener in a separate goroutine
 		go keyListener(cancel)
@@ -88,6 +98,9 @@ func mainMenu() {
 		wg.Wait()
 		cancel()
 	case 4:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
 		ctx, cancel := context.WithCancel(context.Background())
 		// Start key listener in a separate goroutine
 		go keyListener(cancel)
@@ -100,6 +113,9 @@ func mainMenu() {
 		wg.Wait()
 		cancel()
 	case 5:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
 		ctx, cancel := context.WithCancel(context.Background())
 		// Start key listener in a separate goroutine
 		go keyListener(cancel)
@@ -108,6 +124,21 @@ func mainMenu() {
 		go func() {
 			defer wg.Done()
 			codeOption5(ctx)
+		}()
+		wg.Wait()
+		cancel()
+	case 6:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
+		ctx, cancel := context.WithCancel(context.Background())
+		// Start key listener in a separate goroutine
+		go keyListener(cancel)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codeOption6(ctx)
 		}()
 		wg.Wait()
 		cancel()
@@ -329,6 +360,55 @@ func stopScript(cancel context.CancelFunc) {
 	stopRequested.Store(true)
 	fmt.Println("Script Stopped")
 	cancel()
+}
+
+func codeOption6(ctx context.Context) {
+	fmt.Println("AFK mode for AFK maps + Left Mouse Button activated")
+
+	// Use defer to ensure left mouse button is released when the function exits
+	defer func() {
+		holdLeftMouseButton(false)
+	}()
+
+	// Track the state of mouse button
+	mousePressed := false
+	// Timer for 180 second cycles
+	lastActionTime := time.Now().Add(-180 * time.Second) // Start with expired time to trigger immediate action
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if running.Load() {
+				// If mouse is not pressed yet, press and hold it
+				if !mousePressed {
+					holdLeftMouseButton(true)
+					mousePressed = true
+				}
+				
+				// Check if 180 seconds have passed since last action
+				if time.Since(lastActionTime) >= 180*time.Second {
+					// Press keys like in mode 2
+					doubleKeypress("w")
+					doubleKeypress("s")
+					doubleKeypress("a")
+					doubleKeypress("d")
+					lastActionTime = time.Now()
+				}
+				
+				// Small pause to prevent overwhelming the CPU
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				// If mouse is pressed and running is false, release it
+				if mousePressed {
+					holdLeftMouseButton(false)
+					mousePressed = false
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
 }
 
 // Key listener function

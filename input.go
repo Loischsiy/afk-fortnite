@@ -38,12 +38,27 @@ func simulateKeyPress(key string) {
 	time.Sleep(150 * time.Millisecond)
 }
 
+// Function to simulate a quick key press (for double press mode)
+func quickKeyPress(key string) {
+	// Check if the key exists in our map
+	virtualKey, exists := keyToVirtualCode[key]
+	if !exists {
+		return // Key not found, do nothing
+	}
+
+	// Quick press and release (no long hold)
+	robotgo.KeyDown(virtualKey)
+	time.Sleep(10 * time.Millisecond) // Very short press
+	robotgo.KeyUp(virtualKey)
+	time.Sleep(50 * time.Millisecond) // Short delay between actions
+}
+
 // Function to simulate a double key press
 func doubleKeypress(key string) {
-	// Call simulateKeyPress twice with a small delay between presses
-	simulateKeyPress(key)
+	// Call quickKeyPress twice with a small delay between presses
+	quickKeyPress(key)
 	time.Sleep(50 * time.Millisecond) // 50 milliseconds delay
-	simulateKeyPress(key)
+	quickKeyPress(key)
 }
 
 // Function to hold or release a key
@@ -63,6 +78,17 @@ func holdKey(key string, press bool) {
 	} else {
 		println("Вызов robotgo.KeyToggle() с параметрами:", virtualKey, "up")
 		robotgo.KeyToggle(virtualKey, "up")
+	}
+}
+
+// Function to hold or release left mouse button
+func holdLeftMouseButton(press bool) {
+	if press {
+		println("Вызов robotgo.Toggle() с параметрами: left, down")
+		robotgo.Toggle("left", "down")
+	} else {
+		println("Вызов robotgo.Toggle() с параметрами: left, up")
+		robotgo.Toggle("left", "up")
 	}
 }
 
