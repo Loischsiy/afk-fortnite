@@ -120,15 +120,29 @@ func mainMenu() {
 func codeOption1(ctx context.Context) {
 	fmt.Println("AFK mode for LEGO activated")
 
+	// Define the keys that can be randomly pressed
+	keys := []string{"w", "s", "a", "d", "space"}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			if running.Load() {
-				randomKeypress()
+				// Select a random key from the available keys
+				randomIndex := rand.Intn(len(keys))
+				selectedKey := keys[randomIndex]
+
+				// Press the selected key
+				simulateKeyPress(selectedKey)
+
+				// Wait for a random duration between 1-3 seconds before next key press
+				randomDelay := time.Duration(1000+rand.Intn(2000)) * time.Millisecond
+				time.Sleep(randomDelay)
+			} else {
+				// Small pause when not running
+				time.Sleep(100 * time.Millisecond)
 			}
-			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
@@ -208,30 +222,40 @@ func codeOption4(ctx context.Context) {
 		holdKey("s", false)
 	}()
 
-	// Create a ticker that fires every 5 seconds
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	// Create a ticker that fires every 5 seconds for Shift key
+	shiftTicker := time.NewTicker(5 * time.Second)
+	defer shiftTicker.Stop()
+
+	// Start goroutine for Shift key pressing every 5 seconds
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-shiftTicker.C:
+				if running.Load() {
+					// Press and release 'shift' key
+					holdKey("shift", true)
+					time.Sleep(50 * time.Millisecond)
+					holdKey("shift", false)
+				}
+			}
+		}
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			if running.Load() {
-				// Press and release 'shift' key
-				holdKey("shift", true)
-				time.Sleep(50 * time.Millisecond)
-				holdKey("shift", false)
-			}
 		default:
 			if running.Load() {
-				// Press and hold 's' key for 0.3 seconds
+				// Press and hold 's' key for 1 second
 				holdKey("s", true)
-				time.Sleep(300 * time.Millisecond)
+				time.Sleep(1 * time.Second)
 				// Release 's' key
 				holdKey("s", false)
-				// Sleep for 0.3 seconds before the next cycle
-				time.Sleep(300 * time.Millisecond)
+				// Wait for 1 second before the next cycle
+				time.Sleep(1 * time.Second)
 			} else {
 				// Small pause when not running
 				time.Sleep(100 * time.Millisecond)
@@ -310,12 +334,12 @@ func stopScript(cancel context.CancelFunc) {
 // Key listener function
 func keyListener(cancel context.CancelFunc) {
 	// Register key event for '=' key to toggle script
-	hook.Register(hook.KeyDown, []string{"="}, func(e hook.Event) {
+	hook.Register(hook.KeyDown, []string{"-"}, func(e hook.Event) {
 		toggleScript()
 	})
 
 	// Register key event for '-' key to stop script
-	hook.Register(hook.KeyDown, []string{"-"}, func(e hook.Event) {
+	hook.Register(hook.KeyDown, []string{"="}, func(e hook.Event) {
 		stopScript(cancel)
 		hook.End()
 	})

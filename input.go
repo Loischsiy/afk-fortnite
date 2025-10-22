@@ -23,8 +23,19 @@ func simulateKeyPress(key string) {
 		return // Key not found, do nothing
 	}
 
-	// Simulate key press and release using robotgo
-	robotgo.KeyTap(virtualKey)
+	// Simulate key press with different behavior for space vs other keys
+	robotgo.KeyDown(virtualKey)
+	
+	if key == "space" {
+		// Space key: short press (10ms like before)
+		time.Sleep(10 * time.Millisecond)
+	} else {
+		// All other keys: hold for 1 second
+		time.Sleep(1 * time.Second)
+	}
+	
+	robotgo.KeyUp(virtualKey)
+	time.Sleep(150 * time.Millisecond)
 }
 
 // Function to simulate a double key press
@@ -47,8 +58,10 @@ func holdKey(key string, press bool) {
 	// KeyToggle takes the key and a modifier (we use "null" for no modifier)
 	// The second parameter indicates the action: "up" to release, "down" to press
 	if press {
+		println("Вызов robotgo.KeyToggle() с параметрами:", virtualKey, "down")
 		robotgo.KeyToggle(virtualKey, "down")
 	} else {
+		println("Вызов robotgo.KeyToggle() с параметрами:", virtualKey, "up")
 		robotgo.KeyToggle(virtualKey, "up")
 	}
 }
@@ -56,10 +69,14 @@ func holdKey(key string, press bool) {
 // Function to move the mouse continuously to the right edge of the screen for a given duration
 func moveMouseRightContinuously(duration time.Duration) {
 	// Get screen size
-	screenWidth, _ := robotgo.GetScreenSize()
+	println("Вызов robotgo.GetScreenSize()")
+	screenWidth, screenHeight := robotgo.GetScreenSize()
+	println("Получен размер экрана: ", screenWidth, "x", screenHeight)
 
 	// Get current mouse position
-	_, currentY := robotgo.GetMousePos()
+	println("Вызов robotgo.GetMousePos()")
+	currentX, currentY := robotgo.GetMousePos()
+	println("Получена позиция мыши: (", currentX, ",", currentY, ")")
 
 	// Calculate the target x coordinate (right edge of the screen)
 	targetX := screenWidth - 1
@@ -67,5 +84,7 @@ func moveMouseRightContinuously(duration time.Duration) {
 	targetY := currentY
 
 	// Move the mouse smoothly to the right edge of the screen
-	robotgo.MoveSmooth(targetX, targetY, 10.0, 100.0)
+	println("Вызов robotgo.MoveSmooth() с параметрами:", targetX, targetY, 10.0, 100.0)
+	success := robotgo.MoveSmooth(targetX, targetY, 10.0, 100.0)
+	println("Результат MoveSmooth:", success)
 }
