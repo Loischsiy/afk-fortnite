@@ -25,11 +25,6 @@ jobs:
             goarch: amd64
             output: afk-fortnite-windows-amd64.exe
             deps: ""
-          - os: macos-13
-            goos: darwin
-            goarch: amd64
-            output: afk-fortnite-darwin-amd64
-            deps: ""
           - os: macos-latest
             goos: darwin
             goarch: arm64
@@ -105,7 +100,6 @@ jobs:
         files: |
           dist/afk-fortnite-linux-amd64
           dist/afk-fortnite-windows-amd64.exe
-          dist/afk-fortnite-darwin-amd64
           dist/afk-fortnite-darwin-arm64
           dist/checksums.txt
       env:
