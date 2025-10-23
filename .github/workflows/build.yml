@@ -64,17 +64,21 @@ jobs:
         go mod download
         go mod verify
 
-    - name: Build
+    - name: Build (Windows)
+      if: matrix.goos == 'windows'
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
         CGO_ENABLED: ${{ matrix.cgo_enabled }}
-      run: |
-        if [ "${{ matrix.goos }}" = "windows" ]; then
-          go build -ldflags="-s -w -H=windowsgui" -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
-        else
-          go build -ldflags="-s -w" -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
-        fi
+      run: go build -ldflags="-s -w -H=windowsgui" -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
+
+    - name: Build (Linux/macOS)
+      if: matrix.goos != 'windows'
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: ${{ matrix.cgo_enabled }}
+      run: go build -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
