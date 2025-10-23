@@ -92,4 +92,4 @@ jobs:
           afk-fortnite-windows-amd64.exe
           afk-fortnite-darwin-amd64
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
