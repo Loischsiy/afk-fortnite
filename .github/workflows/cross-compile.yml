@@ -58,16 +58,9 @@ jobs:
         CGO_ENABLED: 1
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
-      run: go build -ldflags="-s -w -H=windowsgui" -v -o dist/afk-fortnite-windows-amd64.exe .
+      run: go build -ldflags="-s -w" -v -o dist/afk-fortnite-windows-amd64.exe .
 
-    - name: Build for macOS ARM64 (Apple Silicon)
-      env:
-        GOOS: darwin
-        GOARCH: arm64
-        CGO_ENABLED: 0
-      run: go build -v -o dist/afk-fortnite-darwin-arm64 .
-
-    - name: Build for macOS x86_64 (Intel)
+    - name: Build for macOS (Note: Limited CGO support)
       env:
         GOOS: darwin
         GOARCH: amd64
@@ -92,7 +85,6 @@ jobs:
         files: |
           dist/afk-fortnite-linux-amd64
           dist/afk-fortnite-windows-amd64.exe
-          dist/afk-fortnite-darwin-arm64
           dist/afk-fortnite-darwin-amd64
           dist/checksums.txt
       env:
