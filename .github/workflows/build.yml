@@ -25,11 +25,17 @@ jobs:
             binary_suffix: ".exe"
           - os: macos-latest
             goos: darwin
-            goarch: amd64
+            goarch: arm64
             binary_suffix: ""
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Clean Go cache and modules
+      run: |
+        go clean -cache -modcache -i -r || true
+        rm -rf ~/go/pkg/mod || true
+        rm -rf ~/.cache/go-build || true
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -90,6 +96,6 @@ jobs:
         files: |
           afk-fortnite-linux-amd64
           afk-fortnite-windows-amd64.exe
-          afk-fortnite-darwin-amd64
+          afk-fortnite-darwin-arm64
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
