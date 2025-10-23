@@ -23,15 +23,15 @@ build-all: build-linux build-windows build-darwin
 
 # Сборка для Linux
 build-linux: $(BUILD_DIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -v -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags="-s -w" -v -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
 
 # Сборка для Windows (требует mingw-w64)
 build-windows: $(BUILD_DIR)
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -v -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -ldflags="-s -w -H=windowsgui" -v -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
 
 # Сборка для macOS (без CGO из-за ограничений кросс-компиляции)
 build-darwin: $(BUILD_DIR)
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -v -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 .
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -v -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 .
 
 # Установка зависимостей для кросс-компиляции (Ubuntu/Debian)
 install-deps:

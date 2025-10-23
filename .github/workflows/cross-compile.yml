@@ -49,7 +49,7 @@ jobs:
         GOOS: linux
         GOARCH: amd64
         CGO_ENABLED: 1
-      run: go build -v -o dist/afk-fortnite-linux-amd64 .
+      run: go build -ldflags="-s -w" -v -o dist/afk-fortnite-linux-amd64 .
 
     - name: Build for Windows
       env:
@@ -58,14 +58,14 @@ jobs:
         CGO_ENABLED: 1
         CC: x86_64-w64-mingw32-gcc
         CXX: x86_64-w64-mingw32-g++
-      run: go build -v -o dist/afk-fortnite-windows-amd64.exe .
+      run: go build -ldflags="-s -w -H=windowsgui" -v -o dist/afk-fortnite-windows-amd64.exe .
 
     - name: Build for macOS (Note: Limited CGO support)
       env:
         GOOS: darwin
         GOARCH: amd64
         CGO_ENABLED: 0
-      run: go build -v -o dist/afk-fortnite-darwin-amd64 .
+      run: go build -ldflags="-s -w" -v -o dist/afk-fortnite-darwin-amd64 .
 
     - name: Create checksums
       run: |

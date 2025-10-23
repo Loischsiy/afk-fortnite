@@ -66,7 +66,12 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
         CGO_ENABLED: 1
-      run: go build -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
+      run: |
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          go build -ldflags="-s -w -H=windowsgui" -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
+        else
+          go build -ldflags="-s -w" -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
+        fi
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
