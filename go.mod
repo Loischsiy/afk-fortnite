@@ -1,6 +1,9 @@
 module afk-fortnite
 
-require github.com/go-vgo/robotgo v0.110.6
+require (
+	github.com/go-vgo/robotgo v0.110.6
+	github.com/robotn/gohook v0.42.2
+)
 
 require (
 	github.com/dblohm7/wingoes v0.0.0-20240820181039-f2b84150679e // indirect
@@ -15,7 +18,6 @@ require (
 	github.com/otiai10/gosseract v2.2.1+incompatible // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/robotn/gohook v0.42.2 // indirect
 	github.com/robotn/xgb v0.10.0 // indirect
 	github.com/robotn/xgbutil v0.10.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
