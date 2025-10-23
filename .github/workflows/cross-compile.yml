@@ -25,10 +25,15 @@ jobs:
             goarch: amd64
             output: afk-fortnite-windows-amd64.exe
             deps: ""
-          - os: macos-latest
+          - os: macos-13
             goos: darwin
             goarch: amd64
             output: afk-fortnite-darwin-amd64
+            deps: ""
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            output: afk-fortnite-darwin-arm64
             deps: ""
     
     runs-on: ${{ matrix.os }}
@@ -101,6 +106,7 @@ jobs:
           dist/afk-fortnite-linux-amd64
           dist/afk-fortnite-windows-amd64.exe
           dist/afk-fortnite-darwin-amd64
+          dist/afk-fortnite-darwin-arm64
           dist/checksums.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
