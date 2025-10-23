@@ -19,17 +19,14 @@ jobs:
             goos: linux
             goarch: amd64
             binary_suffix: ""
-            cgo_enabled: 1
           - os: windows-latest
             goos: windows
             goarch: amd64
             binary_suffix: ".exe"
-            cgo_enabled: 1
           - os: macos-latest
             goos: darwin
-            goarch: arm64
+            goarch: amd64
             binary_suffix: ""
-            cgo_enabled: 0
 
     steps:
     - uses: actions/checkout@v4
@@ -64,20 +61,11 @@ jobs:
         go mod download
         go mod verify
 
-    - name: Build (Windows)
-      if: matrix.goos == 'windows'
+    - name: Build
       env:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: ${{ matrix.cgo_enabled }}
-      run: go build -ldflags="-s -w -H=windowsgui" -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
-
-    - name: Build (Linux/macOS)
-      if: matrix.goos != 'windows'
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: ${{ matrix.cgo_enabled }}
+        CGO_ENABLED: 1
       run: go build -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
 
     - name: Upload artifacts
