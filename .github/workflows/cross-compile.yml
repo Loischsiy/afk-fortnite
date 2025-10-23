@@ -1,0 +1,83 @@
+name: Cross-Compile Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  cross-compile:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev xorg-dev libxtst-dev libpng++-dev
+        sudo apt-get install -y xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev
+        sudo apt-get install -y libxkbcommon-x11-dev libxkbcommon-dev
+        sudo apt-get install -y gcc-mingw-w64
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build for Linux
+      env:
+        GOOS: linux
+        GOARCH: amd64
+        CGO_ENABLED: 1
+      run: go build -v -o dist/afk-fortnite-linux-amd64 .
+
+    - name: Build for Windows
+      env:
+        GOOS: windows
+        GOARCH: amd64
+        CGO_ENABLED: 1
+        CC: x86_64-w64-mingw32-gcc
+        CXX: x86_64-w64-mingw32-g++
+      run: go build -v -o dist/afk-fortnite-windows-amd64.exe .
+
+    - name: Build for macOS (Note: Limited CGO support)
+      env:
+        GOOS: darwin
+        GOARCH: amd64
+        CGO_ENABLED: 0
+      run: go build -v -o dist/afk-fortnite-darwin-amd64 .
+
+    - name: Create checksums
+      run: |
+        cd dist
+        sha256sum * > checksums.txt
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: cross-compiled-binaries
+        path: dist/
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          dist/afk-fortnite-linux-amd64
+          dist/afk-fortnite-windows-amd64.exe
+          dist/afk-fortnite-darwin-amd64
+          dist/checksums.txt
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

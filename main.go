@@ -41,7 +41,7 @@ func mainMenu() {
 	fmt.Println("[4] - AFK #4: S-Press + Shift")
 	fmt.Println("[5] - AFK #5: Hold E")
 	fmt.Println("[6] - AFK #6: AFK maps + Left Mouse Button")
-	fmt.Println("[7] - AFK #7: Shift every 3s + Mouse click every 30s")
+	fmt.Println("[7] - AFK #7: Shift every 1s + Mouse click every 30s")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -428,11 +428,30 @@ func codeOption6(ctx context.Context) {
 }
 
 func codeOption7(ctx context.Context) {
-	fmt.Println("AFK mode #7 (Shift every 3 seconds + Mouse click every 30 seconds) activated")
+	fmt.Println("AFK mode #7 (Shift every 1 seconds + Mouse click every 30 seconds) activated")
+
+	// Create a ticker that fires every 1 seconds for Shift key
+	shiftTicker := time.NewTicker(1 * time.Second)
+	defer shiftTicker.Stop()
 
 	// Create a ticker that fires every 30 seconds for mouse click
 	mouseTicker := time.NewTicker(30 * time.Second)
 	defer mouseTicker.Stop()
+
+	// Start goroutine for Shift key pressing every 1 seconds
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-shiftTicker.C:
+				if running.Load() {
+					// Press and release 'shift' key
+					simulateKeyPress("shift")
+				}
+			}
+		}
+	}()
 
 	// Start goroutine for mouse clicking every 30 seconds
 	go func() {
@@ -449,26 +468,14 @@ func codeOption7(ctx context.Context) {
 		}
 	}()
 
+	// Main loop just waits and keeps the function alive
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			if running.Load() {
-				// Press and release 'shift' key
-				simulateKeyPress("shift")
-				
-				// Wait for 3 seconds before next press
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(1 * time.Second):
-					// Continue after 3 seconds
-				}
-			} else {
-				// Small pause when not running
-				time.Sleep(100 * time.Millisecond)
-			}
+			// Small pause to prevent overwhelming the CPU
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

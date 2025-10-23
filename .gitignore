@@ -42,3 +42,7 @@ afk*
 
 # debug information files
 *.dwo
+
+# macos
+.DS_Store
+*.DS_Store

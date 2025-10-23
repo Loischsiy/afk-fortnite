@@ -1,0 +1,88 @@
+name: Build Multi-Platform
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ created ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            binary_suffix: ""
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            binary_suffix: ".exe"
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            binary_suffix: ""
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev xorg-dev libxtst-dev libpng++-dev
+        sudo apt-get install -y xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev
+        sudo apt-get install -y libxkbcommon-x11-dev libxkbcommon-dev
+        sudo apt-get install -y xsel xclip
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 1
+      run: go build -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          afk-fortnite-linux-amd64/afk-fortnite-linux-amd64
+          afk-fortnite-windows-amd64/afk-fortnite-windows-amd64.exe
+          afk-fortnite-darwin-amd64/afk-fortnite-darwin-amd64
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
