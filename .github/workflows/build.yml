@@ -46,7 +46,7 @@ jobs:
         sudo apt-get install -y xsel xclip
 
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -64,7 +64,7 @@ jobs:
       run: go build -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}
         path: afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }}
@@ -75,14 +75,16 @@ jobs:
     if: github.event_name == 'release'
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
+      with:
+        merge-multiple: true
 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          afk-fortnite-linux-amd64/afk-fortnite-linux-amd64
-          afk-fortnite-windows-amd64/afk-fortnite-windows-amd64.exe
-          afk-fortnite-darwin-amd64/afk-fortnite-darwin-amd64
+          afk-fortnite-linux-amd64
+          afk-fortnite-windows-amd64.exe
+          afk-fortnite-darwin-amd64
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
