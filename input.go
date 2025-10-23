@@ -13,6 +13,7 @@ var keyToVirtualCode = map[string]string{
 	"s":     "s",
 	"d":     "d",
 	"space": "space",
+	"shift": "shift",
 }
 
 // Function to simulate a key press
@@ -90,6 +91,13 @@ func holdLeftMouseButton(press bool) {
 		println("Вызов robotgo.Toggle() с параметрами: left, up")
 		robotgo.Toggle("left", "up")
 	}
+}
+
+// Function to simulate a single left mouse click
+func clickLeftMouseButton() {
+	println("Вызов robotgo.Click() с параметрами: left")
+	robotgo.Click("left")
+	time.Sleep(50 * time.Millisecond) // Small delay after click
 }
 
 // Function to move the mouse continuously to the right edge of the screen for a given duration

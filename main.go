@@ -41,6 +41,7 @@ func mainMenu() {
 	fmt.Println("[4] - AFK #4: S-Press + Shift")
 	fmt.Println("[5] - AFK #5: Hold E")
 	fmt.Println("[6] - AFK #6: AFK maps + Left Mouse Button")
+	fmt.Println("[7] - AFK #7: Shift every 3s + Mouse click every 30s")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -139,6 +140,21 @@ func mainMenu() {
 		go func() {
 			defer wg.Done()
 			codeOption6(ctx)
+		}()
+		wg.Wait()
+		cancel()
+	case 7:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
+		ctx, cancel := context.WithCancel(context.Background())
+		// Start key listener in a separate goroutine
+		go keyListener(cancel)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codeOption7(ctx)
 		}()
 		wg.Wait()
 		cancel()
@@ -405,6 +421,52 @@ func codeOption6(ctx context.Context) {
 					holdLeftMouseButton(false)
 					mousePressed = false
 				}
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
+}
+
+func codeOption7(ctx context.Context) {
+	fmt.Println("AFK mode #7 (Shift every 3 seconds + Mouse click every 30 seconds) activated")
+
+	// Create a ticker that fires every 30 seconds for mouse click
+	mouseTicker := time.NewTicker(30 * time.Second)
+	defer mouseTicker.Stop()
+
+	// Start goroutine for mouse clicking every 30 seconds
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-mouseTicker.C:
+				if running.Load() {
+					// Click left mouse button
+					clickLeftMouseButton()
+				}
+			}
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if running.Load() {
+				// Press and release 'shift' key
+				simulateKeyPress("shift")
+				
+				// Wait for 3 seconds before next press
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(1 * time.Second):
+					// Continue after 3 seconds
+				}
+			} else {
+				// Small pause when not running
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
