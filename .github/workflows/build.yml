@@ -31,12 +31,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # - name: Clean Go cache and modules
-    #   run: |
-    #     go clean -cache -modcache -i -r || true
-    #     rm -rf ~/go/pkg/mod || true
-    #     rm -rf ~/.cache/go-build || true
-
+    - name: Clean Go cache and modules
+      run: |
+        go clean -cache -modcache -i -r || true
+      
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
