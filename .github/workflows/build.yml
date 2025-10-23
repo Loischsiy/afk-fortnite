@@ -31,11 +31,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Clean Go cache and modules
-      run: |
-        go clean -cache -modcache -i -r || true
-        rm -rf ~/go/pkg/mod || true
-        rm -rf ~/.cache/go-build || true
+    # - name: Clean Go cache and modules
+    #   run: |
+    #     go clean -cache -modcache -i -r || true
+    #     rm -rf ~/go/pkg/mod || true
+    #     rm -rf ~/.cache/go-build || true
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -72,7 +72,7 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
         CGO_ENABLED: 1
-      run: go build -v -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
+      run: go build -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
