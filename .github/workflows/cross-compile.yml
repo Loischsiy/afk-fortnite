@@ -32,9 +32,17 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
+      if: hashFiles('**/go.sum') != ''
 
-    - name: Download dependencies
-      run: go mod download
+    - name: Verify and download dependencies
+      run: |
+        go mod verify || true
+        go mod tidy
+        go mod download
+        go mod verify
+
+    - name: Create dist directory
+      run: mkdir -p dist
 
     - name: Build for Linux
       env:
