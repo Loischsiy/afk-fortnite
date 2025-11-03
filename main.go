@@ -42,6 +42,7 @@ func mainMenu() {
 	fmt.Println("[5] - AFK #5: Hold E")
 	fmt.Println("[6] - AFK #6: AFK maps + Left Mouse Button")
 	fmt.Println("[7] - AFK #7: Shift every 1s + Mouse click every 30s")
+	fmt.Println("[8] - AFK #8: Shift+W together, hold W 2s, then hold S 6s")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -155,6 +156,21 @@ func mainMenu() {
 		go func() {
 			defer wg.Done()
 			codeOption7(ctx)
+		}()
+		wg.Wait()
+		cancel()
+	case 8:
+		// Reset state for fresh start
+		running.Store(false)
+		stopRequested.Store(false)
+		ctx, cancel := context.WithCancel(context.Background())
+		// Start key listener in a separate goroutine
+		go keyListener(cancel)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codeOption8(ctx)
 		}()
 		wg.Wait()
 		cancel()
@@ -273,6 +289,10 @@ func codeOption4(ctx context.Context) {
 	shiftTicker := time.NewTicker(5 * time.Second)
 	defer shiftTicker.Stop()
 
+	// Create a ticker that fires every 30 seconds for mouse click
+	mouseTicker := time.NewTicker(30 * time.Second)
+	defer mouseTicker.Stop()
+
 	// Start goroutine for Shift key pressing every 5 seconds
 	go func() {
 		for {
@@ -290,6 +310,21 @@ func codeOption4(ctx context.Context) {
 		}
 	}()
 
+	// Start goroutine for mouse clicking every 30 seconds
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-mouseTicker.C:
+				if running.Load() {
+					// Click left mouse button
+					clickLeftMouseButton()
+				}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -298,11 +333,11 @@ func codeOption4(ctx context.Context) {
 			if running.Load() {
 				// Press and hold 's' key for 1 second
 				holdKey("s", true)
-				time.Sleep(1 * time.Second)
+				time.Sleep(3 * time.Millisecond)
 				// Release 's' key
 				holdKey("s", false)
 				// Wait for 1 second before the next cycle
-				time.Sleep(1 * time.Second)
+				time.Sleep(180 * time.Millisecond)
 			} else {
 				// Small pause when not running
 				time.Sleep(100 * time.Millisecond)
@@ -402,7 +437,7 @@ func codeOption6(ctx context.Context) {
 					holdLeftMouseButton(true)
 					mousePressed = true
 				}
-				
+
 				// Check if 180 seconds have passed since last action
 				if time.Since(lastActionTime) >= 180*time.Second {
 					// Press keys like in mode 2
@@ -412,7 +447,7 @@ func codeOption6(ctx context.Context) {
 					doubleKeypress("d")
 					lastActionTime = time.Now()
 				}
-				
+
 				// Small pause to prevent overwhelming the CPU
 				time.Sleep(100 * time.Millisecond)
 			} else {
@@ -476,6 +511,42 @@ func codeOption7(ctx context.Context) {
 		default:
 			// Small pause to prevent overwhelming the CPU
 			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+func codeOption8(ctx context.Context) {
+	fmt.Println("AFK mode #8 (Shift+W together, W 2s then S 6s loop) activated")
+
+	// Ensure keys are released when exiting
+	defer func() {
+		holdKey("w", false)
+		holdKey("s", false)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if running.Load() {
+				// Step 1: Press Shift and W simultaneously; hold W for 2 seconds
+				holdKey("w", true)
+				// Tap shift quickly while W is held to achieve simultaneous press
+				quickKeyPress("shift")
+				time.Sleep(4 * time.Second)
+				holdKey("w", false)
+
+				// Step 2: Hold S for 6 seconds
+				holdKey("s", true)
+				time.Sleep(6 * time.Second)
+				holdKey("s", false)
+			} else {
+				// Release any held keys when not running
+				holdKey("w", false)
+				holdKey("s", false)
+				time.Sleep(100 * time.Millisecond)
+			}
 		}
 	}
 }
