@@ -1,17 +1,26 @@
-.PHONY: build build-gui tidy clean build-all build-linux build-windows build-darwin build-darwin-arm64 build-darwin-amd64 install-deps package
+.PHONY: build build-gui icon tidy clean build-all build-linux build-windows build-darwin build-darwin-arm64 build-darwin-amd64 install-deps package
 
 # Переменные
 BINARY_NAME=afk-fortnite
 VERSION=$(shell git describe --tags --always --dirty)
 BUILD_DIR=dist
+ICON_SYSO=rsrc_windows_amd64.syso
 
 # Основная цель - сборка для текущей платформы
 build:
 	go build -v -o $(BINARY_NAME) .
 
-# Сборка GUI-версии без окна консоли (актуально для Windows)
-build-gui:
-	go build -ldflags="-H=windowsgui" -v -o $(BINARY_NAME) .
+# Генерация ресурса с иконкой для Windows .exe (файл rsrc_windows_amd64.syso
+# автоматически вкомпилируется в бинарник только для GOOS=windows GOARCH=amd64)
+$(ICON_SYSO): icon.ico
+	go install github.com/akavel/rsrc@latest
+	rsrc -ico icon.ico -arch amd64 -o $(ICON_SYSO)
+
+icon: $(ICON_SYSO)
+
+# Сборка GUI-версии без окна консоли + иконка (актуально для Windows)
+build-gui: $(ICON_SYSO)
+	go build -ldflags="-H=windowsgui" -v -o $(BINARY_NAME).exe .
 
 # Обновление зависимостей (нужно после добавления Fyne)
 tidy:
@@ -20,7 +29,7 @@ tidy:
 # Очистка
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -f $(BINARY_NAME) $(BINARY_NAME).exe
+	rm -f $(BINARY_NAME) $(BINARY_NAME).exe $(ICON_SYSO)
 
 # Создание директории для сборки
 $(BUILD_DIR):
@@ -33,8 +42,8 @@ build-all: build-linux build-windows build-darwin-arm64 build-darwin-amd64
 build-linux: $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags="-s -w" -v -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
 
-# Сборка для Windows (требует mingw-w64), GUI без консоли
-build-windows: $(BUILD_DIR)
+# Сборка для Windows (требует mingw-w64), GUI без консоли + иконка
+build-windows: $(BUILD_DIR) $(ICON_SYSO)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -ldflags="-s -w -H=windowsgui" -v -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
 
 # Сборка для macOS ARM64 (Apple Silicon) - Fyne и robotgo требуют CGO

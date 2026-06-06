@@ -1,11 +1,10 @@
 name: Build Multi-Platform
 
 on:
+  # Сборка и релиз запускаются только при пуше тега v* (например v3.2)
   push:
-    branches: [ main, master ]
     tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, master ]
+  # или при ручном создании релиза в UI GitHub
   release:
     types: [ created ]
 
@@ -57,6 +56,12 @@ jobs:
         run: |
           go mod tidy
           go mod download
+      - name: Embed Windows icon
+        shell: bash
+        run: |
+          go install github.com/akavel/rsrc@latest
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          rsrc -ico icon.ico -arch amd64 -o rsrc_windows_amd64.syso
       - name: Build
         shell: bash
         env:
@@ -97,8 +102,6 @@ jobs:
   release:
     needs: [ build-linux, build-windows, build-macos ]
     runs-on: ubuntu-latest
-    # Publish a GitHub Release when a tag (v*) is pushed, or when a release is created in the UI.
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
     permissions:
       contents: write
     steps:
