@@ -1,183 +1,183 @@
 package main
 
 import (
-	"bufio"
+	_ "embed"
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/widget"
 
 	"github.com/go-vgo/robotgo"
 	hook "github.com/robotn/gohook"
 )
 
+//go:embed icon.ico
+var iconData []byte
+
 // Global variables for script state
 var (
 	running       = &atomic.Bool{}
-	stopRequested = &atomic.Bool{}
+	selectedMode  = &atomic.Int32{}
+	stateMu       sync.Mutex
+	currentCancel context.CancelFunc
+	statusBinding = binding.NewString()
 )
+
+// Human readable names shown in the UI. Index 0 maps to mode 1, etc.
+var modeNames = []string{
+	"AFK #1: LEGO (random WASD + space)",
+	"AFK #2: AFK maps (WASD every 180s)",
+	"AFK #3: Circle running (Shift+W + mouse)",
+	"AFK #4: Hold S + Shift 5s + click 30s",
+	"AFK #5: Hold E",
+	"AFK #6: AFK maps + hold left mouse",
+	"AFK #7: Shift 1s + click 30s",
+	"AFK #8: Shift+W 2s then S 6s loop",
+}
+
+// modeFuncs maps the selected index (0-based) to the worker function.
+var modeFuncs = []func(context.Context){
+	codeOption1,
+	codeOption2,
+	codeOption3,
+	codeOption4,
+	codeOption5,
+	codeOption6,
+	codeOption7,
+	codeOption8,
+}
 
 func main() {
 	// Initialize robotgo for Windows
 	robotgo.SetHandle(0)
-	mainMenu()
+
+	statusBinding.Set("Stopped")
+	selectedMode.Store(0)
+
+	a := app.NewWithID("com.afkfortnite.gui")
+	icon := fyne.NewStaticResource("icon.ico", iconData)
+	a.SetIcon(icon)
+
+	w := a.NewWindow("AFK Fortnite")
+	w.SetIcon(icon)
+
+	// System tray menu (Show / Start / Stop). Fyne appends a Quit item automatically.
+	if desk, ok := a.(desktop.App); ok {
+		trayMenu := fyne.NewMenu("AFK Fortnite",
+			fyne.NewMenuItem("Открыть окно", func() {
+				w.Show()
+				w.RequestFocus()
+			}),
+			fyne.NewMenuItem("Старт", func() { startSelectedMode() }),
+			fyne.NewMenuItem("Стоп", func() { stopMode() }),
+		)
+		desk.SetSystemTrayMenu(trayMenu)
+		desk.SetSystemTrayIcon(icon)
+	}
+
+	// Minimize to tray instead of quitting when the window is closed.
+	w.SetCloseIntercept(func() {
+		w.Hide()
+	})
+
+	modeSelect := widget.NewSelect(modeNames, func(s string) {
+		for i, n := range modeNames {
+			if n == s {
+				selectedMode.Store(int32(i))
+				break
+			}
+		}
+	})
+	modeSelect.SetSelectedIndex(0)
+
+	statusLabel := widget.NewLabelWithData(statusBinding)
+
+	startBtn := widget.NewButton("▶  Старт", func() { startSelectedMode() })
+	startBtn.Importance = widget.HighImportance
+	stopBtn := widget.NewButton("■  Стоп", func() { stopMode() })
+
+	hint := widget.NewLabel("Горячие клавиши: '-' — старт/стоп, '=' — стоп.\nЗакрытие окна сворачивает программу в системный трей.")
+	hint.Wrapping = fyne.TextWrapWord
+
+	content := container.NewVBox(
+		widget.NewLabelWithStyle("Выберите режим AFK:", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		modeSelect,
+		container.NewGridWithColumns(2, startBtn, stopBtn),
+		widget.NewSeparator(),
+		container.NewHBox(widget.NewLabelWithStyle("Статус:", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}), statusLabel),
+		widget.NewSeparator(),
+		hint,
+	)
+	w.SetContent(content)
+	w.Resize(fyne.NewSize(440, 320))
+
+	// Start global hotkey listener in the background.
+	go startHotkeys()
+
+	w.ShowAndRun()
 }
 
-func mainMenu() {
-	fmt.Println("*******************************")
-	fmt.Println("*                             *")
-	fmt.Println("*     SELECT AFK OPTION       *")
-	fmt.Println("*                             *")
-	fmt.Println("*******************************")
-	fmt.Println("Choose which AFK mode you want to use:")
-	fmt.Println("[1] - AFK #1: AFK mode for LEGO")
-	fmt.Println("[2] - AFK #2: AFK mode for AFK maps")
-	fmt.Println("[3] - AFK #3: AFK mode for Circle runing (testing)")
-	fmt.Println("[4] - AFK #4: S-Press + Shift")
-	fmt.Println("[5] - AFK #5: Hold E")
-	fmt.Println("[6] - AFK #6: AFK maps + Left Mouse Button")
-	fmt.Println("[7] - AFK #7: Shift every 1s + Mouse click every 30s")
-	fmt.Println("[8] - AFK #8: Shift+W together, hold W 2s, then hold S 6s")
-
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	input := strings.TrimSpace(scanner.Text())
-	choice, err := strconv.Atoi(input)
-	if err != nil {
-		fmt.Println("Invalid input. Please enter a number.")
+// startSelectedMode stops any running mode and launches the currently selected one.
+func startSelectedMode() {
+	idx := int(selectedMode.Load())
+	if idx < 0 || idx >= len(modeFuncs) {
 		return
 	}
 
-	switch choice {
-	case 1:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption1(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	case 2:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption2(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	case 3:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption3(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	case 4:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption4(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	case 5:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption5(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	case 6:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption6(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	case 7:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption7(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	case 8:
-		// Reset state for fresh start
-		running.Store(false)
-		stopRequested.Store(false)
-		ctx, cancel := context.WithCancel(context.Background())
-		// Start key listener in a separate goroutine
-		go keyListener(cancel)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			codeOption8(ctx)
-		}()
-		wg.Wait()
-		cancel()
-	default:
-		fmt.Println("Invalid choice. Please try again.")
-		return
+	// Stop any previously running mode first.
+	stopMode()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stateMu.Lock()
+	currentCancel = cancel
+	stateMu.Unlock()
+
+	running.Store(true)
+	go modeFuncs[idx](ctx)
+	statusBinding.Set("Работает — " + modeNames[idx])
+}
+
+// stopMode stops the active mode and releases held keys via each worker's defer.
+func stopMode() {
+	running.Store(false)
+	stateMu.Lock()
+	if currentCancel != nil {
+		currentCancel()
+		currentCancel = nil
 	}
+	stateMu.Unlock()
+	statusBinding.Set("Остановлено")
+}
+
+// toggleMode is used by the global hotkey.
+func toggleMode() {
+	if running.Load() {
+		stopMode()
+	} else {
+		startSelectedMode()
+	}
+}
+
+// startHotkeys keeps the global keyboard shortcuts working even when the
+// window is hidden in the tray.
+func startHotkeys() {
+	hook.Register(hook.KeyDown, []string{"-"}, func(e hook.Event) {
+		toggleMode()
+	})
+	hook.Register(hook.KeyDown, []string{"="}, func(e hook.Event) {
+		stopMode()
+	})
+	s := hook.Start()
+	<-hook.Process(s)
 }
 
 func codeOption1(ctx context.Context) {
@@ -394,25 +394,6 @@ func randomKeypress() {
 	time.Sleep(randomDelay)
 }
 
-// Toggle the script on/off
-func toggleScript() {
-	newState := !running.Load()
-	running.Store(newState)
-	if newState {
-		fmt.Println("Script Started")
-	} else {
-		fmt.Println("Script Stopped")
-	}
-}
-
-// Stop the script completely
-func stopScript(cancel context.CancelFunc) {
-	running.Store(false)
-	stopRequested.Store(true)
-	fmt.Println("Script Stopped")
-	cancel()
-}
-
 func codeOption6(ctx context.Context) {
 	fmt.Println("AFK mode for AFK maps + Left Mouse Button activated")
 
@@ -549,22 +530,4 @@ func codeOption8(ctx context.Context) {
 			}
 		}
 	}
-}
-
-// Key listener function
-func keyListener(cancel context.CancelFunc) {
-	// Register key event for '=' key to toggle script
-	hook.Register(hook.KeyDown, []string{"-"}, func(e hook.Event) {
-		toggleScript()
-	})
-
-	// Register key event for '-' key to stop script
-	hook.Register(hook.KeyDown, []string{"="}, func(e hook.Event) {
-		stopScript(cancel)
-		hook.End()
-	})
-
-	// Start the hook for processing events
-	s := hook.Start()
-	<-hook.Process(s)
 }

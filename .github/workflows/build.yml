@@ -3,97 +3,116 @@ name: Build Multi-Platform
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
   release:
     types: [ created ]
 
+# Required so the workflow token can create releases and upload assets.
+permissions:
+  contents: write
+
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            binary_suffix: ""
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-            binary_suffix: ".exe"
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
-            binary_suffix: ""
-
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev xorg-dev libxtst-dev libpng++-dev
+          sudo apt-get install -y xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev
+          sudo apt-get install -y libxkbcommon-x11-dev libxkbcommon-dev
+          sudo apt-get install -y xsel xclip libgl1-mesa-dev
+      - name: Resolve dependencies
+        run: |
+          go mod tidy
+          go mod download
+      - name: Build
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 1
+        run: go build -ldflags="-s -w" -o afk-fortnite-linux-amd64 .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: afk-fortnite-linux-amd64
+          path: afk-fortnite-linux-amd64
 
-    - name: Clean Go cache and modules
-      run: |
-        go clean -cache -modcache -i -r || true
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Resolve dependencies
+        run: |
+          go mod tidy
+          go mod download
+      - name: Build
+        shell: bash
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 1
+        run: go build -ldflags="-s -w -H=windowsgui" -o afk-fortnite-windows-amd64.exe .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: afk-fortnite-windows-amd64
+          path: afk-fortnite-windows-amd64.exe
 
-    - name: Install dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libx11-dev xorg-dev libxtst-dev libpng++-dev
-        sudo apt-get install -y xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev
-        sudo apt-get install -y libxkbcommon-x11-dev libxkbcommon-dev
-        sudo apt-get install -y xsel xclip
-
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-      if: hashFiles('**/go.sum') != ''
-
-    - name: Verify and download dependencies
-      run: |
-        go mod verify || true
-        go mod tidy
-        go mod download
-        go mod verify
-
-    - name: Build
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: 1
-      run: go build -o afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }} .
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: afk-fortnite-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.binary_suffix }}
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Resolve dependencies
+        run: |
+          go mod tidy
+          go mod download
+      - name: Build
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          CGO_ENABLED: 1
+        run: go build -ldflags="-s -w" -o afk-fortnite-darwin-arm64 .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: afk-fortnite-darwin-arm64
+          path: afk-fortnite-darwin-arm64
 
   release:
-    needs: build
+    needs: [ build-linux, build-windows, build-macos ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    # Publish a GitHub Release when a tag (v*) is pushed, or when a release is created in the UI.
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+    permissions:
+      contents: write
     steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        merge-multiple: true
-
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          afk-fortnite-linux-amd64
-          afk-fortnite-windows-amd64.exe
-          afk-fortnite-darwin-arm64
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            afk-fortnite-linux-amd64
+            afk-fortnite-windows-amd64.exe
+            afk-fortnite-darwin-arm64
