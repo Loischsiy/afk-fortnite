@@ -4,6 +4,6 @@ Name=AFK Fortnite
 Comment=Anti-AFK assistant for Fortnite
 Exec=afk-fortnite
 Icon=afk-fortnite
-Categories=Game;Utility;
+Categories=Game;
 Terminal=false
 StartupNotify=true

@@ -68,7 +68,7 @@ install-deps:
 	sudo apt-get install -y xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev
 	sudo apt-get install -y libxkbcommon-x11-dev libxkbcommon-dev
 	sudo apt-get install -y libgl1-mesa-dev
-	sudo apt-get install -y gcc-mingw-w64
+	sudo apt-get install -y gcc-mingw-w64 file
 
 # Создание архивов
 package: build-all
@@ -82,7 +82,7 @@ $(LINUXDEPLOY):
 	curl -fL -o $@ $(LINUXDEPLOY_URL)
 	chmod +x $@
 
-$(BUILD_DIR)/AppDir/afk-fortnite.desktop: $(BUILD_DIR)
+$(BUILD_DIR)/AppDir/afk-fortnite.desktop: build-linux
 	mkdir -p $(BUILD_DIR)/AppDir/usr/bin
 	cp $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(BUILD_DIR)/AppDir/usr/bin/$(BINARY_NAME)
 	cp packaging/linux/$(BINARY_NAME).desktop $(BUILD_DIR)/AppDir/
@@ -94,5 +94,5 @@ $(BUILD_DIR)/AppDir/afk-fortnite.desktop: $(BUILD_DIR)
 # APPIMAGE_EXTRACT_AND_RUN=1 - запуск linuxdeploy без FUSE (нужно в CI)
 appimage: build-linux $(BUILD_DIR)/AppDir/afk-fortnite.desktop $(LINUXDEPLOY)
 	cd $(BUILD_DIR) && APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 ./linuxdeploy-x86_64.AppImage \
-		--appdir AppDir -d $(BINARY_NAME).desktop -i $(BINARY_NAME).png --output appimage
+		--appdir AppDir -d AppDir/$(BINARY_NAME).desktop -i AppDir/$(BINARY_NAME).png --output appimage
 	mv $(BUILD_DIR)/AFK_Fortnite-x86_64.AppImage $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64.AppImage

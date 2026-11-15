@@ -14,7 +14,10 @@ permissions:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    # ubuntu-22.04, а не latest: библиотеки из 24.04 (glibc 2.39) не работают
+    # на Debian 12 / Ubuntu 22.04 и старше. AppImage собираем на самой старой
+    # поддерживаемой базе, чтобы он запускался у максимального числа пользователей.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
@@ -50,7 +53,8 @@ jobs:
           ln -sf afk-fortnite.png AppDir/.DirIcon
           curl -fL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
           chmod +x linuxdeploy.AppImage
-          ./linuxdeploy.AppImage --appdir AppDir -d afk-fortnite.desktop -i afk-fortnite.png --output appimage
+          # важно: пути -d/-i должны быть с префиксом AppDir/, иначе linuxdeploy их не найдёт
+          ./linuxdeploy.AppImage --appdir AppDir -d AppDir/afk-fortnite.desktop -i AppDir/afk-fortnite.png --output appimage
           mv AFK_Fortnite-x86_64.AppImage afk-fortnite-linux-amd64.AppImage
       - name: Upload artifact
         uses: actions/upload-artifact@v4
