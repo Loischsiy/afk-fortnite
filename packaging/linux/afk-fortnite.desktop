@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=AFK Fortnite
+Comment=Anti-AFK assistant for Fortnite
+Exec=afk-fortnite
+Icon=afk-fortnite
+Categories=Game;Utility;
+Terminal=false
+StartupNotify=true

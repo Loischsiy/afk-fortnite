@@ -38,11 +38,30 @@ jobs:
           GOARCH: amd64
           CGO_ENABLED: 1
         run: go build -ldflags="-s -w" -o afk-fortnite-linux-amd64 .
+      - name: Package AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          ARCH: x86_64
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp afk-fortnite-linux-amd64 AppDir/usr/bin/afk-fortnite
+          cp packaging/linux/afk-fortnite.desktop AppDir/
+          cp packaging/linux/afk-fortnite.png AppDir/
+          ln -sf afk-fortnite.png AppDir/.DirIcon
+          curl -fL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy.AppImage
+          ./linuxdeploy.AppImage --appdir AppDir -d afk-fortnite.desktop -i afk-fortnite.png --output appimage
+          mv AFK_Fortnite-x86_64.AppImage afk-fortnite-linux-amd64.AppImage
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: afk-fortnite-linux-amd64
           path: afk-fortnite-linux-amd64
+      - name: Upload artifact (AppImage)
+        uses: actions/upload-artifact@v4
+        with:
+          name: afk-fortnite-linux-amd64.AppImage
+          path: afk-fortnite-linux-amd64.AppImage
 
   build-windows:
     runs-on: windows-latest
@@ -117,5 +136,6 @@ jobs:
           prerelease: false
           files: |
             afk-fortnite-linux-amd64
+            afk-fortnite-linux-amd64.AppImage
             afk-fortnite-windows-amd64.exe
             afk-fortnite-darwin-arm64
