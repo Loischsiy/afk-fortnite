@@ -52,3 +52,10 @@ rsrc_windows_amd64.syso
 
 # NOTE: do NOT ignore go.sum (it must be committed).
 # The previous "*.sum" rule accidentally ignored it.
+
+# Vendored Go dependencies are committed for the NixOS build (vendorHash = null).
+# Negations protect vendored binary files from the *.a/*.so rules above.
+!vendor/**/*.a
+!vendor/**/*.so
+!vendor/**/*.dll
+!vendor/**/*.lib

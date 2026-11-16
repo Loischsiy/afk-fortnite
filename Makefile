@@ -1,4 +1,4 @@
-.PHONY: build build-gui icon tidy clean build-all build-linux build-windows build-darwin build-darwin-arm64 build-darwin-amd64 install-deps package appimage
+.PHONY: build build-gui icon tidy clean build-all build-linux build-linux-wayland build-windows build-darwin build-darwin-arm64 build-darwin-amd64 install-deps package appimage build-nix
 
 # Переменные
 BINARY_NAME=afk-fortnite
@@ -26,9 +26,12 @@ icon: $(ICON_SYSO)
 build-gui: $(ICON_SYSO)
 	go build -ldflags="-H=windowsgui" -v -o $(BINARY_NAME).exe .
 
-# Обновление зависимостей (нужно после добавления Fyne)
+# Обновление зависимостей (нужно после добавления Fyne).
+# scripts/vendor.sh после tidy докладывает C-заголовки robotgo/gohook,
+# которые go mod vendor не переносит (нужны NixOS-сборке и локальной сборке с -mod=vendor).
 tidy:
 	go mod tidy
+	bash scripts/vendor.sh
 
 # Очистка
 clean:
@@ -40,11 +43,16 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Сборка для всех платформ
-build-all: build-linux build-windows build-darwin-arm64 build-darwin-amd64
+build-all: build-linux build-linux-wayland build-windows build-darwin-arm64 build-darwin-amd64
 
-# Сборка для Linux
+# Сборка для Linux (X11-версия GUI; под Wayland запускается через XWayland)
 build-linux: $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags="-s -w" -v -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
+
+# Сборка для Linux: нативная Wayland-версия GUI (Fyne с -tags wayland).
+# Симуляция ввода под Wayland идёт через /dev/uinput (у обоих бинарей).
+build-linux-wayland: $(BUILD_DIR)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -tags wayland -ldflags="-s -w" -v -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64-wayland .
 
 # Сборка для Windows (требует mingw-w64), GUI без консоли + иконка
 build-windows: $(BUILD_DIR) $(ICON_SYSO)
@@ -68,14 +76,23 @@ install-deps:
 	sudo apt-get install -y xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev
 	sudo apt-get install -y libxkbcommon-x11-dev libxkbcommon-dev
 	sudo apt-get install -y libgl1-mesa-dev
+	# Wayland-сборка GUI (build-linux-wayland): компилятор wayland-scanner
+	# уже входит в libwayland-dev
+	sudo apt-get install -y libwayland-dev wayland-protocols libegl1-mesa-dev
 	sudo apt-get install -y gcc-mingw-w64 file
 
 # Создание архивов
 package: build-all
 	cd $(BUILD_DIR) && tar -czf $(BINARY_NAME)-linux-amd64.tar.gz $(BINARY_NAME)-linux-amd64
+	cd $(BUILD_DIR) && tar -czf $(BINARY_NAME)-linux-amd64-wayland.tar.gz $(BINARY_NAME)-linux-amd64-wayland
 	cd $(BUILD_DIR) && zip $(BINARY_NAME)-windows-amd64.zip $(BINARY_NAME)-windows-amd64.exe
 	cd $(BUILD_DIR) && tar -czf $(BINARY_NAME)-darwin-arm64.tar.gz $(BINARY_NAME)-darwin-arm64
 	cd $(BUILD_DIR) && tar -czf $(BINARY_NAME)-darwin-amd64.tar.gz $(BINARY_NAME)-darwin-amd64
+
+# Сборка через Nix flake (для NixOS). Первый запуск также зафиксирует flake.lock.
+build-nix:
+	nix build .#afk-fortnite
+	nix build .#afk-fortnite-wayland
 
 # Сборка AppImage (только на Linux; под macOS не работает)
 $(LINUXDEPLOY):

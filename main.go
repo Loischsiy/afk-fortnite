@@ -1,8 +1,8 @@
 package main
 
 import (
-	_ "embed"
 	"context"
+	_ "embed"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -17,7 +17,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/go-vgo/robotgo"
-	hook "github.com/robotn/gohook"
 )
 
 //go:embed icon.ico
@@ -63,6 +62,9 @@ func main() {
 	statusBinding.Set("Stopped")
 	selectedMode.Store(0)
 
+	// Выбрать бэкенд симуляции ввода (X11/Wayland) до старта режимов и хоткеев.
+	initInputBackend()
+
 	a := app.NewWithID("com.afkfortnite.gui")
 	icon := fyne.NewStaticResource("icon.ico", iconData)
 	a.SetIcon(icon)
@@ -105,7 +107,11 @@ func main() {
 	startBtn.Importance = widget.HighImportance
 	stopBtn := widget.NewButton("■  Стоп", func() { stopMode() })
 
-	hint := widget.NewLabel("Горячие клавиши: '-' — старт/стоп, '=' — стоп.\nЗакрытие окна сворачивает программу в системный трей.")
+	hintText := "Горячие клавиши: '-' — старт/стоп, '=' — стоп.\nЗакрытие окна сворачивает программу в системный трей."
+	if isWaylandSession() {
+		hintText += "\nWayland: симуляция ввода идёт через /dev/uinput (или ydotool), хоткеи — через evdev.\nЕсли ввод или хоткеи не работают — см. README, раздел Wayland."
+	}
+	hint := widget.NewLabel(hintText)
 	hint.Wrapping = fyne.TextWrapWord
 
 	content := container.NewVBox(
@@ -165,19 +171,6 @@ func toggleMode() {
 	} else {
 		startSelectedMode()
 	}
-}
-
-// startHotkeys keeps the global keyboard shortcuts working even when the
-// window is hidden in the tray.
-func startHotkeys() {
-	hook.Register(hook.KeyDown, []string{"-"}, func(e hook.Event) {
-		toggleMode()
-	})
-	hook.Register(hook.KeyDown, []string{"="}, func(e hook.Event) {
-		stopMode()
-	})
-	s := hook.Start()
-	<-hook.Process(s)
 }
 
 func codeOption1(ctx context.Context) {

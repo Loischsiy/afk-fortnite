@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	fyne.io/fyne/v2 v2.5.3
+	github.com/bendahl/uinput v1.7.0
 	github.com/go-vgo/robotgo v0.110.6
 	github.com/robotn/gohook v0.42.2
 )

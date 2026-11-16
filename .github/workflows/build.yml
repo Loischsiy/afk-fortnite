@@ -31,6 +31,8 @@ jobs:
           sudo apt-get install -y xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev
           sudo apt-get install -y libxkbcommon-x11-dev libxkbcommon-dev
           sudo apt-get install -y xsel xclip libgl1-mesa-dev
+          # Для нативной Wayland-сборки GUI (build -tags wayland)
+          sudo apt-get install -y libwayland-dev wayland-protocols libegl1-mesa-dev
       - name: Resolve dependencies
         run: |
           go mod tidy
@@ -41,6 +43,12 @@ jobs:
           GOARCH: amd64
           CGO_ENABLED: 1
         run: go build -ldflags="-s -w" -o afk-fortnite-linux-amd64 .
+      - name: Build (native Wayland GUI)
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 1
+        run: go build -tags wayland -ldflags="-s -w" -o afk-fortnite-linux-amd64-wayland .
       - name: Package AppImage
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'
@@ -61,6 +69,11 @@ jobs:
         with:
           name: afk-fortnite-linux-amd64
           path: afk-fortnite-linux-amd64
+      - name: Upload artifact (native Wayland GUI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: afk-fortnite-linux-amd64-wayland
+          path: afk-fortnite-linux-amd64-wayland
       - name: Upload artifact (AppImage)
         uses: actions/upload-artifact@v4
         with:
@@ -140,6 +153,7 @@ jobs:
           prerelease: false
           files: |
             afk-fortnite-linux-amd64
+            afk-fortnite-linux-amd64-wayland
             afk-fortnite-linux-amd64.AppImage
             afk-fortnite-windows-amd64.exe
             afk-fortnite-darwin-arm64
